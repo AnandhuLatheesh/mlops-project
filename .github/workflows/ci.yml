@@ -5,23 +5,49 @@ on:
     branches: ["main"]
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
+      # Setup Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
+      # Install dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-    - name: Build Docker Image
-      run: docker build -t mlops-app .
+      # Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Run Container
-      run: docker run -d -p 5000:5000 mlops-app
+      # Login to Amazon ECR
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin 160180440918.dkr.ecr.ap-south-1.amazonaws.com
+
+      # Build Docker image
+      - name: Build Docker Image
+        run: docker build -t mlops-app .
+
+      # Tag Docker image
+      - name: Tag Docker Image
+        run: docker tag mlops-app:latest 160180440918.dkr.ecr.ap-south-1.amazonaws.com/mlops-app:latest
+
+      # Push Docker image to ECR
+      - name: Push Docker Image
+        run: docker push 160180440918.dkr.ecr.ap-south-1.amazonaws.com/mlops-app:latest
+
+      # Deploy to ECS (IMPORTANT FIX HERE)
+      - name: Deploy to ECS
+        run: aws ecs update-service --cluster mlops-cluster --service mlops-service --force-new-deployment
