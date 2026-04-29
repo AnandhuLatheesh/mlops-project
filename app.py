@@ -31,7 +31,8 @@ def predict_form():
 
         prediction = model.predict(df)
 
-        return render_template("index.html", prediction_text=f"Predicted Warehouse Sales: {prediction[0]}")
+        return render_template("index.html",prediction_text=f"Warehouse Sales : {round(float(prediction[0]), 2)}"
+)
 
     except Exception as e:
         return render_template("index.html", prediction_text=f"Error: {str(e)}")
